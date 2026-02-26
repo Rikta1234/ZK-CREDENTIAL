@@ -1,37 +1,48 @@
 pragma circom 2.0.0;
 
-include "../node_modules/circomlib/circuits/poseidon.circom";
-include "../node_modules/circomlib/circuits/comparators.circom";
+include "circomlib/circuits/comparators.circom";
+include "circomlib/circuits/poseidon.circom";
+include "circomlib/circuits/bitify.circom";
 
-template AttributeProof() {
+template MultiAttributeProof(n) {
 
-    // PRIVATE inputs
-    signal input x1;
-    signal input x2;
+    signal input attrs[n];
     signal input r;
-
-    // PUBLIC inputs
-    signal input threshold;
     signal input commitment;
+    signal input weights[n];
+    signal input threshold;
 
-    // reconstruct attribute
-    signal x;
-    x <== x1 + x2;
+    signal sums[n+1];
+    sums[0] <== 0;
 
-    // commitment check
-    component poseidon = Poseidon(2);
-    poseidon.inputs[0] <== x;
-    poseidon.inputs[1] <== r;
+    for (var i = 0; i < n; i++) {
+        sums[i+1] <== sums[i] + attrs[i] * weights[i];
+    }
 
-    commitment === poseidon.out;
+    signal sum;
+    sum <== sums[n];
 
-    // predicate check
-    component gt = GreaterThan(32);
-    gt.in[0] <== x;
-    gt.in[1] <== threshold;
+    component guard1 = Num2Bits(64);
+    guard1.in <== sum;
 
-    signal output valid;
-    valid <== gt.out;
+    component guard2 = Num2Bits(64);
+    guard2.in <== threshold;
+
+    component cmp = GreaterThan(64);
+    cmp.in[0] <== sum;
+    cmp.in[1] <== threshold - 1;
+    cmp.out === 1;
+
+    component hash = Poseidon(n+1);
+    for (var i = 0; i < n; i++) {
+        hash.inputs[i] <== attrs[i];
+    }
+    hash.inputs[n] <== r;
+
+    // keep commented for now
+    // hash.out === commitment;
 }
 
-component main = AttributeProof();
+component main = MultiAttributeProof(4);
+
+   
