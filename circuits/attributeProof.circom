@@ -43,6 +43,7 @@ template MultiAttributeProof(n) {
     // hash.out === commitment;
 }
 
+component main = MultiAttributeProof(2);
 component main = MultiAttributeProof(4);
-
+component main = MultiAttributeProof(8);
    
